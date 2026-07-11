@@ -6,7 +6,6 @@ import ServiceManagement
 struct CodexMeterApp: App {
     init() {
         LoginItemManager.enableIfNeeded()
-        UsageRefreshAgent.shared.start()
     }
 
     var body: some Scene {
@@ -21,18 +20,21 @@ struct CodexMeterApp: App {
 
 enum LoginItemManager {
     static func enableIfNeeded() {
-        let service = SMAppService.mainApp
+        enable(SMAppService.mainApp, label: "main")
+        enable(SMAppService.agent(plistName: "com.eko.CodexMeter.agent.plist"), label: "agent")
+    }
+
+    private static func enable(_ service: SMAppService, label: String) {
         guard service.status != .enabled else {
-            record("enabled")
+            record("enabled", label: label)
             return
         }
-
         do {
             try service.register()
-            record(statusName(service.status))
+            record(statusName(service.status), label: label)
         } catch {
-            NSLog("Unable to enable launch at login: %@", error.localizedDescription)
-            record("error: \(error.localizedDescription)")
+            NSLog("Unable to enable %@ service: %@", label, error.localizedDescription)
+            record("error: \(error.localizedDescription)", label: label)
         }
     }
 
@@ -46,27 +48,8 @@ enum LoginItemManager {
         }
     }
 
-    private static func record(_ status: String) {
-        UserDefaults.standard.set(status, forKey: "loginItemStatus")
-    }
-}
-
-@MainActor
-final class UsageRefreshAgent {
-    static let shared = UsageRefreshAgent()
-    private var task: Task<Void, Never>?
-
-    func start() {
-        guard task == nil else { return }
-        task = Task {
-            var tick = 0
-            while !Task.isCancelled {
-                _ = await UsageService.shared.fetch()
-                if tick.isMultiple(of: 5) { WidgetCenter.shared.reloadAllTimelines() }
-                tick += 1
-                try? await Task.sleep(for: .seconds(60))
-            }
-        }
+    private static func record(_ status: String, label: String) {
+        UserDefaults.standard.set(status, forKey: "\(label)ServiceStatus")
     }
 }
 
