@@ -1,0 +1,3 @@
+const { chromium } = require('playwright');
+const path = require('path');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'});const page=await browser.newPage({viewport:{width:1242,height:1660},deviceScaleFactor:1});await page.goto('file://'+path.join(__dirname,'codexmeter-promo.html'));await page.evaluate(()=>document.fonts.ready);for(let i=1;i<=3;i++){const el=page.locator('#slide-'+i);await el.screenshot({path:path.join(__dirname,`codexmeter-xhs-0${i}-1242x1660.png`)});}await browser.close()})().catch(e=>{console.error(e);process.exit(1)});
