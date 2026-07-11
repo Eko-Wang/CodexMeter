@@ -64,6 +64,16 @@ func usageColor(for window: UsageWindow?) -> Color {
     return Color(red: red, green: green, blue: blue)
 }
 
+func weeklyUsageColor(for window: UsageWindow?) -> Color {
+    let t = max(0, min(1, (window?.remainingPercent ?? 0) / 100))
+    // A direct red-to-blue scale keeps urgency readable without introducing
+    // the yellow midpoint used by conventional traffic-light palettes.
+    let red = 0.94 + (0.12 - 0.94) * t
+    let green = 0.22 + (0.55 - 0.22) * t
+    let blue = 0.24 + (0.96 - 0.24) * t
+    return Color(red: red, green: green, blue: blue)
+}
+
 struct TokenActivityChart: View {
     let days: [TokenActivityDay]
     var compact = false
@@ -214,14 +224,14 @@ struct ConcentricUsageRings: View {
 
     var body: some View {
         ZStack {
-            ring(progress: secondary?.remainingPercent ?? 0, lineWidth: 11, trackOpacity: 0.08,
-                 color: usageColor(for: secondary))
-            ring(progress: primary?.remainingPercent ?? 0, lineWidth: 8, trackOpacity: 0.18,
+            ring(progress: secondary?.remainingPercent ?? 0, lineWidth: 13, trackOpacity: 0.08,
+                 color: weeklyUsageColor(for: secondary))
+            ring(progress: primary?.remainingPercent ?? 0, lineWidth: 7, trackOpacity: 0.18,
                  color: usageColor(for: primary))
                 .padding(19)
             VStack(spacing: 1) {
                 Text("\(Int((primary?.remainingPercent ?? 0).rounded()))%")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text("5 小时")
                     .font(.system(size: 8, weight: .semibold, design: .rounded))

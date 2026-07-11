@@ -57,13 +57,13 @@ struct CodexWidgetView: View {
             if family == .systemMedium {
                 Spacer(minLength: 0)
                 UsageBar(title: "5 小时", window: entry.snapshot.primary, accent: usageColor(for: entry.snapshot.primary), compact: true)
-                UsageBar(title: "每周", window: entry.snapshot.secondary, accent: usageColor(for: entry.snapshot.secondary), compact: true)
+                UsageBar(title: "每周", window: entry.snapshot.secondary, accent: weeklyUsageColor(for: entry.snapshot.secondary), compact: true)
                 Spacer(minLength: 0)
             } else {
                 TokenActivityChart(days: entry.snapshot.activity ?? [], fixedGridHeight: 54, stats: entry.snapshot.tokenStats)
                 UsageBar(title: "5 小时额度", window: entry.snapshot.primary, accent: usageColor(for: entry.snapshot.primary))
                 Divider().opacity(0.45)
-                UsageBar(title: "每周额度", window: entry.snapshot.secondary, accent: usageColor(for: entry.snapshot.secondary))
+                UsageBar(title: "每周额度", window: entry.snapshot.secondary, accent: weeklyUsageColor(for: entry.snapshot.secondary))
             }
         }
     }
@@ -80,8 +80,8 @@ struct CodexWidgetView: View {
             }
             ConcentricUsageRings(primary: entry.snapshot.primary, secondary: entry.snapshot.secondary)
             Text("周剩余 \(Int((entry.snapshot.secondary?.remainingPercent ?? 0).rounded()))%")
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(weeklyUsageColor(for: entry.snapshot.secondary))
                 .monospacedDigit()
         }
     }

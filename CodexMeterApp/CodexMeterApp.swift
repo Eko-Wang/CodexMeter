@@ -110,7 +110,7 @@ struct DashboardView: View {
                     Divider().opacity(0.5)
                     UsageBar(title: "5 小时", window: snapshot.primary, accent: usageColor(for: snapshot.primary))
                     Divider().opacity(0.5)
-                    UsageBar(title: "每周", window: snapshot.secondary, accent: usageColor(for: snapshot.secondary))
+                    UsageBar(title: "每周", window: snapshot.secondary, accent: weeklyUsageColor(for: snapshot.secondary))
                 }
                 .padding(22)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
