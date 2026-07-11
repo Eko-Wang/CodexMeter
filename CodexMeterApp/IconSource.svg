@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#252b35"/><stop offset="1" stop-color="#11151c"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#0b6bc9" flood-opacity=".35"/></filter>
+  </defs>
+  <rect x="54" y="54" width="916" height="916" rx="220" fill="url(#bg)"/>
+  <rect x="55" y="55" width="914" height="914" rx="219" fill="none" stroke="#ffffff" stroke-opacity=".12" stroke-width="3"/>
+  <defs>
+    <pattern id="grid" x="181" y="181" width="98" height="98" patternUnits="userSpaceOnUse">
+      <rect width="74" height="74" rx="18" fill="#ffffff" opacity=".07"/>
+    </pattern>
+  </defs>
+  <rect x="181" y="181" width="686" height="686" fill="url(#grid)"/>
+  <g filter="url(#shadow)" fill="#63B3FF">
+    <rect x="279" y="279" width="74" height="74" rx="18"/>
+    <rect x="377" y="279" width="74" height="74" rx="18"/>
+    <rect x="475" y="279" width="74" height="74" rx="18"/>
+    <rect x="573" y="279" width="74" height="74" rx="18"/>
+    <rect x="279" y="377" width="74" height="74" rx="18"/>
+    <rect x="279" y="475" width="74" height="74" rx="18"/>
+    <rect x="279" y="573" width="74" height="74" rx="18"/>
+    <rect x="279" y="671" width="74" height="74" rx="18"/>
+    <rect x="377" y="671" width="74" height="74" rx="18"/>
+    <rect x="475" y="671" width="74" height="74" rx="18"/>
+    <rect x="573" y="671" width="74" height="74" rx="18" fill="#1677E8"/>
+  </g>
+</svg>
