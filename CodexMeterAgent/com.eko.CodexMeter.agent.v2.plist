@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.eko.CodexMeter.agent</string>
+    <string>com.eko.CodexMeter.agent.v2</string>
     <key>BundleProgram</key>
     <string>Contents/MacOS/CodexMeterAgent</string>
     <key>RunAtLoad</key>

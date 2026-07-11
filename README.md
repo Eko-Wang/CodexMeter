@@ -67,9 +67,9 @@ Small uses concentric rings, medium focuses on both quota windows, and large com
 
 ## 本地优先 / Local first
 
-CodexMeter 读取当前 Mac 上已有的 Codex 登录状态和本地活动数据。登录凭证不会复制到 Widget、项目文件或日志。独立后台代理每分钟更新一次脱敏用量快照，因此退出桌面应用后，Widget 仍能自动刷新。
+CodexMeter 读取当前 Mac 上已有的 Codex 登录状态和本地活动数据。登录凭证不会复制到 Widget、项目文件或日志。独立后台代理定期更新脱敏用量快照，因此退出桌面应用后，Widget 仍能自动刷新。
 
-CodexMeter reads the existing Codex session and local activity data on your Mac. Credentials are never copied into widgets, project files, or logs. A lightweight background agent updates the sanitized snapshot every minute, so widgets keep refreshing after the desktop app quits.
+CodexMeter reads the existing Codex session and local activity data on your Mac. Credentials are never copied into widgets, project files, or logs. A lightweight background agent periodically updates the sanitized snapshot, so widgets keep refreshing after the desktop app quits.
 
 ## 安装 / Install
 
@@ -99,9 +99,9 @@ CodexMeter reads the existing Codex session and local activity data on your Mac.
    Select the `CodexMeter` scheme and your Mac.
 3. Build & Run.
 
-系统后台代理每分钟刷新额度，并把脱敏快照同步给 Widget；桌面应用无需保持运行。登录项可在“系统设置 > 通用 > 登录项与扩展”中关闭。
+系统后台代理定期刷新额度，并把脱敏快照同步给 Widget；桌面应用无需保持运行。登录项可在“系统设置 > 通用 > 登录项与扩展”中关闭。
 
-A system-managed background agent refreshes limits every minute and mirrors a sanitized snapshot to WidgetKit; the desktop app does not need to stay open. The login item can be disabled in System Settings > General > Login Items & Extensions.
+A system-managed background agent periodically refreshes limits and mirrors a sanitized snapshot to WidgetKit; the desktop app does not need to stay open. The login item can be disabled in System Settings > General > Login Items & Extensions.
 
 ## 素材 / Assets
 

@@ -21,7 +21,36 @@ struct CodexMeterApp: App {
 enum LoginItemManager {
     static func enableIfNeeded() {
         enable(SMAppService.mainApp, label: "main")
-        enable(SMAppService.agent(plistName: "com.eko.CodexMeter.agent.plist"), label: "agent")
+        enableAgent()
+    }
+
+    private static func enableAgent() {
+        let legacy = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.plist")
+        if legacy.status != .notRegistered {
+            try? legacy.unregister()
+        }
+        let service = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v2.plist")
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        let registeredBuild = UserDefaults.standard.string(forKey: "registeredAgentBuild")
+        if service.status == .enabled, registeredBuild != build {
+            do {
+                try service.unregister()
+                record("updating", label: "agent")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    enable(service, label: "agent")
+                    if service.status == .enabled {
+                        UserDefaults.standard.set(build, forKey: "registeredAgentBuild")
+                    }
+                }
+                return
+            } catch {
+                NSLog("Unable to replace background agent: %@", error.localizedDescription)
+            }
+        }
+        enable(service, label: "agent")
+        if service.status == .enabled {
+            UserDefaults.standard.set(build, forKey: "registeredAgentBuild")
+        }
     }
 
     private static func enable(_ service: SMAppService, label: String) {
@@ -121,6 +150,6 @@ struct DashboardView: View {
         loading = true
         snapshot = await UsageService.shared.fetch()
         loading = false
-        WidgetCenter.shared.reloadAllTimelines()
+        WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV2")
     }
 }
