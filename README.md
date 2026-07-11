@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="CodexMeterApp/Assets.xcassets/AppIcon.appiconset/icon_128.png" width="92" alt="CodexMeter icon">
+  <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/CodexMeterApp/Assets.xcassets/AppIcon.appiconset/icon_128.png" width="92" alt="CodexMeter icon">
 </p>
 
 <h1 align="center">CodexMeter</h1>
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="promo/xiaohongshu/codexmeter-xhs-01-1242x1660.png" width="720" alt="CodexMeter product overview">
+  <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-xhs-01-1242x1660.png" width="720" alt="CodexMeter product overview">
 </p>
 
 ## 概览 / Overview
@@ -31,7 +31,7 @@ CodexMeter 把最常查看的额度和活动数据整理成一块安静、清晰
 CodexMeter turns the usage data you check most often into a calm, focused macOS dashboard. Open the app for the complete activity view, or keep remaining limits visible through native desktop widgets.
 
 <p align="center">
-  <img src="promo/xiaohongshu/codexmeter-app-light-1232x1188.png" width="860" alt="CodexMeter macOS application showing token activity and quota windows">
+  <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-app-light-1232x1188.png" width="860" alt="CodexMeter macOS application showing token activity and quota windows">
 </p>
 
 ## 功能 / Features
@@ -61,8 +61,8 @@ A five-level blue heatmap shows daily activity across the past year, together wi
 Small uses concentric rings, medium focuses on both quota windows, and large combines limits with token activity. Every widget opens the app with one click.
 
 <p align="center">
-  <img src="promo/xiaohongshu/codexmeter-xhs-02-1242x1660.png" width="49%" alt="CodexMeter quota and token activity features">
-  <img src="promo/xiaohongshu/codexmeter-xhs-03-1242x1660.png" width="49%" alt="CodexMeter privacy and widget design">
+  <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-xhs-02-1242x1660.png" width="49%" alt="CodexMeter quota and token activity features">
+  <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-xhs-03-1242x1660.png" width="49%" alt="CodexMeter privacy and widget design">
 </p>
 
 ## 本地优先 / Local first
