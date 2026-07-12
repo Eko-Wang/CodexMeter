@@ -218,42 +218,6 @@ struct TokenActivityChart: View {
     }
 }
 
-struct ConcentricUsageRings: View {
-    let primary: UsageWindow?
-    let secondary: UsageWindow?
-
-    var body: some View {
-        ZStack {
-            ring(progress: secondary?.remainingPercent ?? 0, lineWidth: 13, trackOpacity: 0.08,
-                 color: weeklyUsageColor(for: secondary))
-            ring(progress: primary?.remainingPercent ?? 0, lineWidth: 7, trackOpacity: 0.18,
-                 color: usageColor(for: primary))
-                .padding(19)
-            VStack(spacing: 1) {
-                Text("\(Int((primary?.remainingPercent ?? 0).rounded()))%")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                Text("5 小时")
-                    .font(.system(size: 8, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(4)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Codex 剩余额度")
-        .accessibilityValue("5 小时剩余 \(Int((primary?.remainingPercent ?? 0).rounded()))%，每周剩余 \(Int((secondary?.remainingPercent ?? 0).rounded()))%")
-    }
-
-    private func ring(progress: Double, lineWidth: CGFloat, trackOpacity: Double, color: Color) -> some View {
-        ZStack {
-            Circle().stroke(.primary.opacity(trackOpacity), lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: max(0.006, min(1, progress / 100)))
-                .stroke(color.gradient, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-    }
-}
 
 struct BrandMark: View {
     // One canonical 7×7 mark: the top stroke sits on row 2 and

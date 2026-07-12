@@ -88,6 +88,21 @@ actor UsageService {
     private var officialUsageCache: (date: Date, activity: [TokenActivityDay], stats: TokenStats, resetCredits: Int64?)?
     private lazy var cacheURL = (isWidget ? sandboxHome : userHome)
         .appendingPathComponent("Library/Caches/com.codexmeter.shared/usage.json")
+    private lazy var pendingRollbackURL = userHome
+        .appendingPathComponent("Library/Caches/com.codexmeter.shared/pending-rollbacks.json")
+
+    private struct PendingRollback: Codable {
+        let usedPercent: Double
+        let resetAt: Date?
+        let windowSeconds: Int?
+        let firstSeenAt: Date
+        var confirmations: Int
+    }
+
+    private struct PendingRollbackState: Codable {
+        var primary: PendingRollback?
+        var secondary: PendingRollback?
+    }
 
     func fetch() async -> UsageSnapshot {
         // The host app owns credentials and networking. The widget reads the
@@ -117,9 +132,20 @@ actor UsageService {
             }
 
             let decoded = try decodeUsage(data)
+            let previous = loadCache()
             let official = loadOfficialTokenUsage()
+            let resetCreditWasUsed: Bool = {
+                guard let old = previous?.resetCreditsRemaining, let new = official?.resetCredits else { return false }
+                return new < old
+            }()
+            var pending = loadPendingRollbacks()
+            let primary = stabilized(decoded.primary, against: previous?.primary, label: "5h",
+                                     resetCreditWasUsed: resetCreditWasUsed, pending: &pending.primary)
+            let secondary = stabilized(decoded.secondary, against: previous?.secondary, label: "weekly",
+                                       resetCreditWasUsed: resetCreditWasUsed, pending: &pending.secondary)
+            savePendingRollbacks(pending)
             let activity = official?.activity ?? loadTokenActivity()
-            let snapshot = UsageSnapshot(primary: decoded.primary, secondary: decoded.secondary, plan: decoded.plan,
+            let snapshot = UsageSnapshot(primary: primary, secondary: secondary, plan: decoded.plan,
                                          updatedAt: decoded.updatedAt, errorMessage: nil, activity: activity,
                                          tokenStats: official?.stats ?? loadTokenStats(activity: activity),
                                          resetCreditsRemaining: official?.resetCredits)
@@ -431,6 +457,78 @@ actor UsageService {
         let rawReset = (object["reset_at"] as? NSNumber)?.doubleValue
         let reset = rawReset.map { Date(timeIntervalSince1970: $0 > 10_000_000_000 ? $0 / 1000 : $0) }
         return UsageWindow(usedPercent: used, resetAt: reset, windowSeconds: seconds)
+    }
+
+    /// Rejects one-off stale replicas while still allowing a real manual or
+    /// server-side reset. A rollback is accepted immediately when the reset
+    /// window advances or a reset credit is consumed, otherwise after two
+    /// matching observations persisted across app/agent processes.
+    private func stabilized(_ incoming: UsageWindow?, against previous: UsageWindow?, label: String,
+                            resetCreditWasUsed: Bool, pending: inout PendingRollback?) -> UsageWindow? {
+        guard let incoming, let previous else { pending = nil; return incoming }
+        guard incoming.windowSeconds == previous.windowSeconds else { pending = nil; return incoming }
+
+        let rolledBack = incoming.usedPercent + 0.01 < previous.usedPercent
+        guard rolledBack else { pending = nil; return incoming }
+
+        let scheduledResetOccurred: Bool = {
+            guard let previousReset = previous.resetAt, let incomingReset = incoming.resetAt else { return false }
+            return previousReset <= Date().addingTimeInterval(2 * 60)
+                && incomingReset.timeIntervalSince(previousReset) > 60
+        }()
+        if scheduledResetOccurred || resetCreditWasUsed {
+            pending = nil
+            NSLog("Accepted confirmed %@ quota reset", label)
+            return incoming
+        }
+
+        let now = Date()
+        if var candidate = pending,
+           now.timeIntervalSince(candidate.firstSeenAt) <= 15 * 60,
+           abs(candidate.usedPercent - incoming.usedPercent) <= 0.5,
+           candidate.windowSeconds == incoming.windowSeconds,
+           resetDatesMatch(candidate.resetAt, incoming.resetAt) {
+            candidate.confirmations += 1
+            if candidate.confirmations >= 3 {
+                pending = nil
+                NSLog("Accepted %@ quota rollback after consecutive confirmation", label)
+                return incoming
+            }
+            pending = candidate
+        } else {
+            pending = PendingRollback(usedPercent: incoming.usedPercent, resetAt: incoming.resetAt,
+                                      windowSeconds: incoming.windowSeconds, firstSeenAt: now, confirmations: 1)
+        }
+
+        NSLog("Held unconfirmed %@ quota rollback (%.2f%% -> %.2f%%)", label, previous.usedPercent, incoming.usedPercent)
+        return previous
+    }
+
+    private func resetDatesMatch(_ lhs: Date?, _ rhs: Date?) -> Bool {
+        switch (lhs, rhs) {
+        case let (left?, right?): return abs(left.timeIntervalSince(right)) <= 60
+        case (nil, nil): return true
+        default: return false
+        }
+    }
+
+    private func loadPendingRollbacks() -> PendingRollbackState {
+        guard let data = try? Data(contentsOf: pendingRollbackURL),
+              let state = try? JSONDecoder().decode(PendingRollbackState.self, from: data) else {
+            return PendingRollbackState(primary: nil, secondary: nil)
+        }
+        return state
+    }
+
+    private func savePendingRollbacks(_ state: PendingRollbackState) {
+        if state.primary == nil, state.secondary == nil {
+            try? FileManager.default.removeItem(at: pendingRollbackURL)
+            return
+        }
+        try? FileManager.default.createDirectory(at: pendingRollbackURL.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        guard let data = try? JSONEncoder().encode(state) else { return }
+        try? data.write(to: pendingRollbackURL, options: .atomic)
     }
 
     private func save(_ snapshot: UsageSnapshot) {

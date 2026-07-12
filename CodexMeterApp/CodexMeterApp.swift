@@ -29,7 +29,27 @@ enum LoginItemManager {
         if legacy.status != .notRegistered {
             try? legacy.unregister()
         }
-        let service = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v2.plist")
+        let previous = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v2.plist")
+        if previous.status != .notRegistered {
+            try? previous.unregister()
+        }
+        let last = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v3.plist")
+        if last.status != .notRegistered {
+            try? last.unregister()
+        }
+        let current = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v4.plist")
+        if current.status != .notRegistered {
+            try? current.unregister()
+        }
+        let recent = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v5.plist")
+        if recent.status != .notRegistered {
+            try? recent.unregister()
+        }
+        let active = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v6.plist")
+        if active.status != .notRegistered {
+            try? active.unregister()
+        }
+        let service = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v7.plist")
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let registeredBuild = UserDefaults.standard.string(forKey: "registeredAgentBuild")
         if service.status == .enabled, registeredBuild != build {

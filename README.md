@@ -56,9 +56,9 @@ A five-level blue heatmap shows daily activity across the past year, together wi
 
 ### 三种桌面组件 / Three widget sizes
 
-小号用双环显示额度，中号聚焦两档用量，大号同时展示额度与热力图。点击任意组件即可打开 App。
+小号以对角数字显示两档额度，中号聚焦用量进度，大号同时展示额度与热力图。点击任意组件即可打开 App。
 
-Small uses concentric rings, medium focuses on both quota windows, and large combines limits with token activity. Every widget opens the app with one click.
+Small uses a diagonal numeric layout, medium focuses on both quota windows, and large combines limits with token activity. Every widget opens the app with one click.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-xhs-02-1242x1660.png" width="49%" alt="CodexMeter quota and token activity features">
@@ -102,6 +102,10 @@ CodexMeter reads the existing Codex session and local activity data on your Mac.
 系统后台代理定期刷新额度，并把脱敏快照同步给 Widget；桌面应用无需保持运行。登录项可在“系统设置 > 通用 > 登录项与扩展”中关闭。
 
 A system-managed background agent periodically refreshes limits and mirrors a sanitized snapshot to WidgetKit; the desktop app does not need to stay open. The login item can be disabled in System Settings > General > Login Items & Extensions.
+
+额度接口偶发返回的空白新窗口快照会先进入连续确认，避免桌面组件突然跳回错误的高余额；真实定时重置或用户主动重置仍会正常生效。
+
+Occasional blank-window responses are confirmed across consecutive samples before display, preventing widgets from jumping to an incorrect high balance while preserving scheduled and user-triggered resets.
 
 ## 素材 / Assets
 

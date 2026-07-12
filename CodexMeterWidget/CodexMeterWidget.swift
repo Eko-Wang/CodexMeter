@@ -30,8 +30,12 @@ struct CodexWidgetView: View {
             smallView
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(URL(string: "codexusage://dashboard"))
-        } else {
+        } else if family == .systemMedium {
             standardView
+                .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(URL(string: "codexusage://dashboard"))
+        } else {
+            largeView
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(URL(string: "codexusage://dashboard"))
         }
@@ -54,36 +58,93 @@ struct CodexWidgetView: View {
                     Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.secondary)
                 }
             }
-            if family == .systemMedium {
-                Spacer(minLength: 0)
-                UsageBar(title: "5 小时", window: entry.snapshot.primary, accent: usageColor(for: entry.snapshot.primary), compact: true)
-                UsageBar(title: "每周", window: entry.snapshot.secondary, accent: weeklyUsageColor(for: entry.snapshot.secondary), compact: true)
-                Spacer(minLength: 0)
-            } else {
-                TokenActivityChart(days: entry.snapshot.activity ?? [], fixedGridHeight: 54, stats: entry.snapshot.tokenStats)
-                UsageBar(title: "5 小时额度", window: entry.snapshot.primary, accent: usageColor(for: entry.snapshot.primary))
-                Divider().opacity(0.45)
-                UsageBar(title: "每周额度", window: entry.snapshot.secondary, accent: weeklyUsageColor(for: entry.snapshot.secondary))
-            }
+            Spacer(minLength: 0)
+            UsageBar(title: "5 小时", window: entry.snapshot.primary, accent: usageColor(for: entry.snapshot.primary), compact: true)
+            UsageBar(title: "每周", window: entry.snapshot.secondary, accent: weeklyUsageColor(for: entry.snapshot.secondary), compact: true)
+            Spacer(minLength: 0)
         }
     }
 
     private var smallView: some View {
-        VStack(spacing: 5) {
-            HStack {
-                Text("CodexMeter")
-                    .font(.system(.caption, design: .rounded, weight: .bold))
+        GeometryReader { proxy in
+            ZStack {
+                Path { path in
+                    path.move(to: CGPoint(x: 10, y: proxy.size.height - 14))
+                    path.addLine(to: CGPoint(x: proxy.size.width - 10, y: 14))
+                }
+                .stroke(.primary.opacity(0.12), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+
+                VStack(spacing: 0) {
+                    HStack {
+                        quotaLabel(prefix: "H", window: entry.snapshot.primary,
+                                   color: usageColor(for: entry.snapshot.primary))
+                        Spacer(minLength: 24)
+                    }
+                    Spacer(minLength: 18)
+                    HStack {
+                        Spacer(minLength: 24)
+                        quotaLabel(prefix: "W", window: entry.snapshot.secondary,
+                                   color: weeklyUsageColor(for: entry.snapshot.secondary))
+                    }
+                }
+                .padding(3)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("5 小时剩余 \(remaining(entry.snapshot.primary))%，每周剩余 \(remaining(entry.snapshot.secondary))%")
+    }
+
+    private var largeView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("CodexMeter").font(.system(.headline, design: .rounded, weight: .bold))
+                    Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
                 Spacer()
-                if entry.snapshot.errorMessage != nil {
-                    Image(systemName: "exclamationmark.circle.fill").font(.caption2).foregroundStyle(.secondary)
+                if let count = entry.snapshot.resetCreditsRemaining {
+                    Text("可重置 \(count) 次").font(.system(size: 9, weight: .semibold, design: .rounded)).foregroundStyle(.secondary)
                 }
             }
-            ConcentricUsageRings(primary: entry.snapshot.primary, secondary: entry.snapshot.secondary)
-            Text("周剩余 \(Int((entry.snapshot.secondary?.remainingPercent ?? 0).rounded()))%")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(weeklyUsageColor(for: entry.snapshot.secondary))
-                .monospacedDigit()
+            if let activity = entry.snapshot.activity, !activity.isEmpty {
+                TokenActivityChart(days: activity, fixedGridHeight: 50, stats: entry.snapshot.tokenStats)
+            } else {
+                HStack {
+                    Label("Token 活动等待同步", systemImage: "square.grid.3x3.fill")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .frame(height: 50)
+            }
+            UsageBar(title: "5 小时额度", window: entry.snapshot.primary,
+                     accent: usageColor(for: entry.snapshot.primary), compact: true)
+            Divider().opacity(0.35)
+            UsageBar(title: "每周额度", window: entry.snapshot.secondary,
+                     accent: weeklyUsageColor(for: entry.snapshot.secondary), compact: true)
         }
+    }
+
+    private func quotaLabel(prefix: String, window: UsageWindow?, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 1) {
+            Text("\(prefix)·")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+            Text(window.map { "\(remaining($0))" } ?? "—")
+                .font(.system(size: 38, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .minimumScaleFactor(0.72)
+            if window != nil {
+                Text("%")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+            }
+        }
+        .foregroundStyle(color)
+        .lineLimit(1)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func remaining(_ window: UsageWindow?) -> Int {
+        Int((window?.remainingPercent ?? 0).rounded())
     }
 
     private var subtitle: String {
