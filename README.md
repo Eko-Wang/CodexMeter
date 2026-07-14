@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  原生 macOS 用量仪表，将 5 小时额度、每周额度和 Token 活动放到桌面上。<br>
-  A native macOS dashboard for five-hour limits, weekly limits, and token activity.
+  原生 macOS 用量仪表，自动识别当前额度窗口，并将 Token 活动放到桌面上。<br>
+  A native macOS dashboard that detects active quota windows and brings token activity to your desktop.
 </p>
 
 <p align="center">
@@ -36,11 +36,11 @@ CodexMeter turns the usage data you check most often into a calm, focused macOS 
 
 ## 功能 / Features
 
-### 两档额度 / Dual quota windows
+### 自适应额度 / Adaptive quota windows
 
-分别显示 5 小时与每周剩余百分比，并使用不同色彩快速区分。
+根据窗口时长识别 5 小时与每周额度。官方仅返回一档额度时只显示对应内容，恢复两档后会自动切回双额度布局。
 
-Track five-hour and weekly limits separately, with distinct colors for faster reading.
+CodexMeter identifies five-hour and weekly quotas by window duration. It shows the correct single limit when only one is returned, then automatically restores the dual-limit layout when both return.
 
 ### 重置时间 / Reset timing
 
@@ -56,9 +56,9 @@ A five-level blue heatmap shows daily activity across the past year, together wi
 
 ### 三种桌面组件 / Three widget sizes
 
-小号以对角数字显示两档额度，中号聚焦用量进度，大号同时展示额度与热力图。点击任意组件即可打开 App。
+小号在双额度时使用对角数字，单额度时改为居中大数字与重置时间；中号聚焦用量进度；大号在单额度时补充 Token 统计。点击任意组件即可打开 App。
 
-Small uses a diagonal numeric layout, medium focuses on both quota windows, and large combines limits with token activity. Every widget opens the app with one click.
+Small switches between a diagonal dual-limit layout and a centered single-limit view with reset timing. Medium focuses on quota progress, while large adds token statistics when one quota is active. Every widget opens the app with one click.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Eko-Wang/CodexMeter/main/promo/xiaohongshu/codexmeter-xhs-02-1242x1660.png" width="49%" alt="CodexMeter quota and token activity features">

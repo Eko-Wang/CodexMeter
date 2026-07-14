@@ -8,6 +8,74 @@ struct UsageWindow: Codable, Hashable {
     var remainingPercent: Double { max(0, min(100, 100 - usedPercent)) }
 }
 
+/// Canonical quota slots used by the UI. The API field names are not stable:
+/// after the July 2026 change the seven-day window can arrive as
+/// `primary_window` with no `secondary_window`. Classify by the window itself
+/// so a server-side layout change cannot turn a weekly quota into a 5-hour one.
+struct ClassifiedUsageWindows {
+    let fiveHour: UsageWindow?
+    let weekly: UsageWindow?
+}
+
+enum UsageWindowClassifier {
+    struct Candidate {
+        let sourceKey: String
+        let window: UsageWindow
+    }
+
+    private enum Kind { case fiveHour, weekly }
+
+    static func classify(_ candidates: [Candidate]) -> ClassifiedUsageWindows {
+        var fiveHour: UsageWindow?
+        var weekly: UsageWindow?
+        var unresolved: [Candidate] = []
+
+        for candidate in candidates {
+            switch kind(for: candidate.window) {
+            case .fiveHour?:
+                fiveHour = preferred(fiveHour, candidate.window, targetSeconds: 18_000)
+            case .weekly?:
+                weekly = preferred(weekly, candidate.window, targetSeconds: 604_800)
+            case nil:
+                unresolved.append(candidate)
+            }
+        }
+
+        // Compatibility fallback for old payloads that omit the duration.
+        // We only use the field name when it is unambiguous; a lone unknown
+        // `primary_window` is deliberately not labelled as 5-hour, because the
+        // current API also uses that key for the weekly quota.
+        for candidate in unresolved {
+            if candidate.sourceKey == "secondary_window", weekly == nil {
+                weekly = candidate.window
+            } else if candidates.count > 1,
+                      candidate.sourceKey == "primary_window", fiveHour == nil {
+                fiveHour = candidate.window
+            }
+        }
+
+        return ClassifiedUsageWindows(fiveHour: fiveHour, weekly: weekly)
+    }
+
+    private static func kind(for window: UsageWindow) -> Kind? {
+        guard let seconds = window.windowSeconds, seconds > 0 else { return nil }
+        // Codex has historically used 5 hours and 7 days. Keeping a wide gap
+        // between the buckets tolerates modest server-side duration changes,
+        // while still refusing to guess for an unknown future quota type.
+        if seconds <= 24 * 60 * 60 { return .fiveHour }
+        if seconds >= 3 * 24 * 60 * 60, seconds <= 14 * 24 * 60 * 60 { return .weekly }
+        return nil
+    }
+
+    private static func preferred(_ current: UsageWindow?, _ incoming: UsageWindow,
+                                  targetSeconds: Int) -> UsageWindow {
+        guard let current else { return incoming }
+        let currentDistance = abs((current.windowSeconds ?? targetSeconds) - targetSeconds)
+        let incomingDistance = abs((incoming.windowSeconds ?? targetSeconds) - targetSeconds)
+        return incomingDistance < currentDistance ? incoming : current
+    }
+}
+
 struct UsageSnapshot: Codable, Hashable {
     let primary: UsageWindow?
     let secondary: UsageWindow?
@@ -206,10 +274,13 @@ actor UsageService {
             throw UsageServiceError.invalidResponse
         }
         let rateLimit = (root["rate_limit"] as? [String: Any]) ?? root
-        let primary = decodeWindow(rateLimit["primary_window"])
-        let secondary = decodeWindow(rateLimit["secondary_window"])
-        guard primary != nil || secondary != nil else { throw UsageServiceError.invalidResponse }
-        return UsageSnapshot(primary: primary, secondary: secondary,
+        let candidates = rateLimit.compactMap { key, value -> UsageWindowClassifier.Candidate? in
+            guard key.hasSuffix("_window"), let window = decodeWindow(value) else { return nil }
+            return UsageWindowClassifier.Candidate(sourceKey: key, window: window)
+        }
+        let classified = UsageWindowClassifier.classify(candidates)
+        guard classified.fiveHour != nil || classified.weekly != nil else { throw UsageServiceError.invalidResponse }
+        return UsageSnapshot(primary: classified.fiveHour, secondary: classified.weekly,
                              plan: root["plan_type"] as? String, updatedAt: Date(), errorMessage: nil, activity: nil,
                              tokenStats: nil, resetCreditsRemaining: nil)
     }
@@ -453,7 +524,11 @@ actor UsageService {
     private func decodeWindow(_ value: Any?) -> UsageWindow? {
         guard let object = value as? [String: Any] else { return nil }
         let used = (object["used_percent"] as? NSNumber)?.doubleValue ?? 0
-        let seconds = (object["limit_window_seconds"] as? NSNumber)?.intValue
+        let seconds: Int? = {
+            if let number = object["limit_window_seconds"] as? NSNumber { return number.intValue }
+            if let string = object["limit_window_seconds"] as? String { return Int(string) }
+            return nil
+        }()
         let rawReset = (object["reset_at"] as? NSNumber)?.doubleValue
         let reset = rawReset.map { Date(timeIntervalSince1970: $0 > 10_000_000_000 ? $0 / 1000 : $0) }
         return UsageWindow(usedPercent: used, resetAt: reset, windowSeconds: seconds)
@@ -545,6 +620,19 @@ actor UsageService {
 
     private func loadCache() -> UsageSnapshot? {
         guard let data = try? Data(contentsOf: cacheURL) else { return nil }
-        return try? JSONDecoder().decode(UsageSnapshot.self, from: data)
+        guard let snapshot = try? JSONDecoder().decode(UsageSnapshot.self, from: data) else { return nil }
+        let candidates = [
+            snapshot.primary.map { UsageWindowClassifier.Candidate(sourceKey: "primary_window", window: $0) },
+            snapshot.secondary.map { UsageWindowClassifier.Candidate(sourceKey: "secondary_window", window: $0) }
+        ].compactMap { $0 }
+        let classified = UsageWindowClassifier.classify(candidates)
+        guard classified.fiveHour != snapshot.primary || classified.weekly != snapshot.secondary else {
+            return snapshot
+        }
+        return UsageSnapshot(primary: classified.fiveHour, secondary: classified.weekly,
+                             plan: snapshot.plan, updatedAt: snapshot.updatedAt,
+                             errorMessage: snapshot.errorMessage, activity: snapshot.activity,
+                             tokenStats: snapshot.tokenStats,
+                             resetCreditsRemaining: snapshot.resetCreditsRemaining)
     }
 }

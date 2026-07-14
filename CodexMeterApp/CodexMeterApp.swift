@@ -49,7 +49,19 @@ enum LoginItemManager {
         if active.status != .notRegistered {
             try? active.unregister()
         }
-        let service = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v7.plist")
+        let latest = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v7.plist")
+        if latest.status != .notRegistered {
+            try? latest.unregister()
+        }
+        let newest = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v8.plist")
+        if newest.status != .notRegistered {
+            try? newest.unregister()
+        }
+        let finalLegacy = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v9.plist")
+        if finalLegacy.status != .notRegistered {
+            try? finalLegacy.unregister()
+        }
+        let service = SMAppService.agent(plistName: "com.eko.CodexMeter.agent.v10.plist")
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
         let registeredBuild = UserDefaults.standard.string(forKey: "registeredAgentBuild")
         if service.status == .enabled, registeredBuild != build {
@@ -139,10 +151,18 @@ struct DashboardView: View {
 
                 VStack(spacing: 20) {
                     TokenActivityChart(days: snapshot.activity ?? [], stats: snapshot.tokenStats, showsDetails: true)
-                    Divider().opacity(0.5)
-                    UsageBar(title: "5 小时", window: snapshot.primary, accent: usageColor(for: snapshot.primary))
-                    Divider().opacity(0.5)
-                    UsageBar(title: "每周", window: snapshot.secondary, accent: weeklyUsageColor(for: snapshot.secondary))
+                    if snapshot.primary != nil || snapshot.secondary != nil {
+                        Divider().opacity(0.5)
+                    }
+                    if let fiveHour = snapshot.primary {
+                        UsageBar(title: "5 小时", window: fiveHour, accent: usageColor(for: fiveHour))
+                    }
+                    if snapshot.primary != nil, snapshot.secondary != nil {
+                        Divider().opacity(0.5)
+                    }
+                    if let weekly = snapshot.secondary {
+                        UsageBar(title: "每周", window: weekly, accent: weeklyUsageColor(for: weekly))
+                    }
                 }
                 .padding(22)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -170,6 +190,6 @@ struct DashboardView: View {
         loading = true
         snapshot = await UsageService.shared.fetch()
         loading = false
-        WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidgetV2")
+        WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidget")
     }
 }

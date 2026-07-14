@@ -28,12 +28,12 @@ struct UsageBar: View {
                 HStack {
                     Text("额度窗口")
                     Spacer()
-                    Text(resetText)
+                    Text(usageResetText(for: window))
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             } else {
-                Text(resetText)
+                Text(usageResetText(for: window))
                     .font(.system(size: 9, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -41,19 +41,19 @@ struct UsageBar: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
-        .accessibilityValue(window.map { "剩余 \(Int($0.remainingPercent.rounded()))%，\(resetText)" } ?? "暂无数据")
+        .accessibilityValue(window.map { "剩余 \(Int($0.remainingPercent.rounded()))%，\(usageResetText(for: $0))" } ?? "暂无数据")
     }
+}
 
-    private var resetText: String {
-        guard let date = window?.resetAt else { return "重置时间未知" }
-        let seconds = max(0, date.timeIntervalSinceNow)
-        let countdown: String
-        if seconds < 3600 { countdown = "\(max(1, Int(seconds / 60))) 分钟" }
-        else if seconds < 86_400 { countdown = "\(Int(seconds / 3600)) 小时 \(Int(seconds.truncatingRemainder(dividingBy: 3600) / 60)) 分" }
-        else { countdown = "\(Int(seconds / 86_400)) 天 \(Int(seconds.truncatingRemainder(dividingBy: 86_400) / 3600)) 小时" }
-        let absolute = date.formatted(.dateTime.month(.twoDigits).day(.twoDigits).hour().minute())
-        return "\(countdown) · \(absolute)"
-    }
+func usageResetText(for window: UsageWindow?) -> String {
+    guard let date = window?.resetAt else { return "重置时间未知" }
+    let seconds = max(0, date.timeIntervalSinceNow)
+    let countdown: String
+    if seconds < 3600 { countdown = "\(max(1, Int(seconds / 60))) 分钟" }
+    else if seconds < 86_400 { countdown = "\(Int(seconds / 3600)) 小时 \(Int(seconds.truncatingRemainder(dividingBy: 3600) / 60)) 分" }
+    else { countdown = "\(Int(seconds / 86_400)) 天 \(Int(seconds.truncatingRemainder(dividingBy: 86_400) / 3600)) 小时" }
+    let absolute = date.formatted(.dateTime.month(.twoDigits).day(.twoDigits).hour().minute())
+    return "\(countdown) · \(absolute)"
 }
 
 func usageColor(for window: UsageWindow?) -> Color {
@@ -185,7 +185,10 @@ struct TokenActivityChart: View {
 
     private func metric(_ value: String, _ label: String) -> some View {
         VStack(spacing: 3) {
-            Text(value).font(.system(size: 13, weight: .semibold, design: .rounded)).lineLimit(1)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
             Text(label).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity)
