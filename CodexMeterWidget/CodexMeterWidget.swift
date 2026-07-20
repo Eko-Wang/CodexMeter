@@ -21,53 +21,84 @@ struct UsageProvider: TimelineProvider {
     }
 }
 
+private struct WidgetGlassPanelModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                Color.primary.opacity(colorScheme == .dark ? 0.075 : 0.045),
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.12), lineWidth: 1)
+            }
+    }
+}
+
+private extension View {
+    func widgetGlassPanel(cornerRadius: CGFloat) -> some View {
+        modifier(WidgetGlassPanelModifier(cornerRadius: cornerRadius))
+    }
+}
+
 struct CodexWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var widgetRenderingMode
     let entry: UsageEntry
 
     var body: some View {
-        if family == .systemSmall {
-            smallView
-                .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(URL(string: "codexusage://dashboard"))
-        } else if family == .systemMedium {
-            standardView
-                .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(URL(string: "codexusage://dashboard"))
-        } else {
-            largeView
-                .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(URL(string: "codexusage://dashboard"))
+        ZStack {
+            PaperDotGrid(spacing: family == .systemSmall ? 15 : 18, dotSize: 1.5)
+            Group {
+                if family == .systemSmall {
+                    smallView
+                } else if family == .systemMedium {
+                    standardView
+                } else {
+                    largeView
+                }
+            }
         }
+        .containerBackground(.fill.tertiary, for: .widget)
+        .widgetURL(URL(string: "codexusage://dashboard"))
     }
 
     private var standardView: some View {
-        VStack(alignment: .leading, spacing: family == .systemMedium ? 9 : 13) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 9) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("CodexMeter").font(.system(.headline, design: .rounded, weight: .bold))
-                    Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text("CodexMeter").font(.system(.headline, design: .rounded, weight: .heavy))
+                    Text(subtitle)
+                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 if let count = entry.snapshot.resetCreditsRemaining {
-                    Text("可重置 \(count) 次")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    resetBadge(count)
                 }
                 if entry.snapshot.errorMessage != nil {
-                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CodexTheme.coral)
                 }
             }
             Spacer(minLength: 0)
-            if let fiveHour = entry.snapshot.primary {
-                UsageBar(title: "5 小时", window: fiveHour, accent: usageColor(for: fiveHour), compact: true)
+            VStack(spacing: 8) {
+                if let fiveHour = entry.snapshot.primary {
+                    UsageBar(title: "5 小时", window: fiveHour, accent: usageColor(for: fiveHour), compact: true)
+                }
+                if let weekly = entry.snapshot.secondary {
+                    UsageBar(title: "每周", window: weekly, accent: weeklyUsageColor(for: weekly), compact: true)
+                }
             }
-            if let weekly = entry.snapshot.secondary {
-                UsageBar(title: "每周", window: weekly, accent: weeklyUsageColor(for: weekly), compact: true)
-            }
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .widgetGlassPanel(cornerRadius: 11)
             if entry.snapshot.primary == nil, entry.snapshot.secondary == nil {
                 Text("额度数据等待同步")
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .font(.system(.caption, design: .monospaced, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -75,39 +106,42 @@ struct CodexWidgetView: View {
     }
 
     private var smallView: some View {
-        GeometryReader { proxy in
-            ZStack {
-                if entry.snapshot.primary != nil, entry.snapshot.secondary != nil {
-                    Path { path in
-                        path.move(to: CGPoint(x: 10, y: proxy.size.height - 14))
-                        path.addLine(to: CGPoint(x: proxy.size.width - 10, y: 14))
+        VStack(alignment: .leading, spacing: 4) {
+            Text("CodexMeter")
+                .font(.system(size: 12, weight: .heavy, design: .rounded))
+            GeometryReader { proxy in
+                ZStack {
+                    if entry.snapshot.primary != nil, entry.snapshot.secondary != nil {
+                        Path { path in
+                            path.move(to: CGPoint(x: 4, y: proxy.size.height - 4))
+                            path.addLine(to: CGPoint(x: proxy.size.width - 4, y: 4))
+                        }
+                        .stroke(CodexTheme.line(for: colorScheme).opacity(0.22), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
                     }
-                    .stroke(.primary.opacity(0.12), style: StrokeStyle(lineWidth: 1, lineCap: .round))
-                }
 
-                if entry.snapshot.primary != nil, entry.snapshot.secondary != nil {
-                    VStack(spacing: 0) {
-                        HStack {
-                            quotaLabel(prefix: "H", window: entry.snapshot.primary,
-                                       color: usageColor(for: entry.snapshot.primary))
-                            Spacer(minLength: 24)
+                    if entry.snapshot.primary != nil, entry.snapshot.secondary != nil {
+                        VStack(spacing: 0) {
+                            HStack {
+                                quotaLabel(prefix: "H", window: entry.snapshot.primary,
+                                           color: usageColor(for: entry.snapshot.primary))
+                                Spacer(minLength: 18)
+                            }
+                            Spacer(minLength: 12)
+                            HStack {
+                                Spacer(minLength: 18)
+                                quotaLabel(prefix: "W", window: entry.snapshot.secondary,
+                                           color: weeklyUsageColor(for: entry.snapshot.secondary))
+                            }
                         }
-                        Spacer(minLength: 18)
-                        HStack {
-                            Spacer(minLength: 24)
-                            quotaLabel(prefix: "W", window: entry.snapshot.secondary,
-                                       color: weeklyUsageColor(for: entry.snapshot.secondary))
-                        }
+                    } else if let fiveHour = entry.snapshot.primary {
+                        singleQuotaView(prefix: "H", window: fiveHour, color: usageColor(for: fiveHour))
+                    } else if let weekly = entry.snapshot.secondary {
+                        singleQuotaView(prefix: "W", window: weekly, color: weeklyUsageColor(for: weekly))
+                    } else {
+                        Text("—")
+                            .font(.system(size: 38, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(3)
-                } else if let fiveHour = entry.snapshot.primary {
-                    singleQuotaView(prefix: "H", window: fiveHour, color: usageColor(for: fiveHour))
-                } else if let weekly = entry.snapshot.secondary {
-                    singleQuotaView(prefix: "W", window: weekly, color: weeklyUsageColor(for: weekly))
-                } else {
-                    Text("—")
-                        .font(.system(size: 38, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -119,27 +153,31 @@ struct CodexWidgetView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("CodexMeter").font(.system(.headline, design: .rounded, weight: .bold))
-                    Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text("CodexMeter").font(.system(.headline, design: .rounded, weight: .heavy))
+                    Text(subtitle).font(.system(size: 8.5, weight: .medium, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
                 if let count = entry.snapshot.resetCreditsRemaining {
-                    Text("可重置 \(count) 次").font(.system(size: 9, weight: .semibold, design: .rounded)).foregroundStyle(.secondary)
+                    resetBadge(count)
                 }
             }
-            if let activity = entry.snapshot.activity, !activity.isEmpty {
-                TokenActivityChart(days: activity, fixedGridHeight: 50,
-                                   stats: entry.snapshot.tokenStats,
-                                   showsDetails: hasSingleQuota)
-            } else {
-                HStack {
-                    Label("Token 活动等待同步", systemImage: "square.grid.3x3.fill")
-                        .font(.system(.caption, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer()
+            Group {
+                if let activity = entry.snapshot.activity, !activity.isEmpty {
+                    TokenActivityChart(days: activity, fixedGridHeight: 50,
+                                       stats: entry.snapshot.tokenStats,
+                                       showsDetails: hasSingleQuota)
+                } else {
+                    HStack {
+                        Label("Token 活动等待同步", systemImage: "square.grid.3x3.fill")
+                            .font(.system(.caption, design: .monospaced, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .frame(height: 50)
                 }
-                .frame(height: 50)
             }
+            .padding(10)
+            .widgetGlassPanel(cornerRadius: 12)
             if let fiveHour = entry.snapshot.primary {
                 UsageBar(title: "5 小时额度", window: fiveHour,
                          accent: usageColor(for: fiveHour), compact: true)
@@ -165,7 +203,7 @@ struct CodexWidgetView: View {
             Text("\(prefix)·")
                 .font(.system(size: markerSize, weight: .bold, design: .rounded))
             Text(window.map { "\(remaining($0))" } ?? "—")
-                .font(.system(size: numberSize, weight: .heavy, design: .rounded))
+                .font(.system(size: numberSize, weight: .black, design: .rounded))
                 .monospacedDigit()
                 .minimumScaleFactor(0.72)
             if window != nil {
@@ -181,9 +219,9 @@ struct CodexWidgetView: View {
     private func singleQuotaView(prefix: String, window: UsageWindow, color: Color) -> some View {
         VStack(spacing: 6) {
             quotaLabel(prefix: prefix, window: window, color: color,
-                       numberSize: 48, markerSize: 13)
+                       numberSize: 50, markerSize: 12)
             Text(usageResetText(for: window))
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -198,6 +236,20 @@ struct CodexWidgetView: View {
 
     private func remaining(_ window: UsageWindow?) -> Int {
         Int((window?.remainingPercent ?? 0).rounded())
+    }
+
+    private func resetBadge(_ count: Int64) -> some View {
+        let fullColor = widgetRenderingMode == .fullColor
+        return Text("可重置 \(count) 次")
+            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .foregroundStyle(fullColor ? CodexTheme.ink : Color.primary)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(fullColor ? CodexTheme.yellow : Color.primary.opacity(0.10), in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(fullColor ? CodexTheme.ink : Color.primary.opacity(0.18), lineWidth: 1)
+            }
+            .widgetAccentable(false)
     }
 
     private var quotaAccessibilityLabel: String {
