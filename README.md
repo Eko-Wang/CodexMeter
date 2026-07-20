@@ -82,6 +82,9 @@ CodexMeter reads the existing Codex session and local activity data on your Mac.
 4. 在桌面右键选择“编辑小组件”，搜索 `CodexMeter`。<br>
    Right-click the desktop, choose Edit Widgets, and search for `CodexMeter`.
 
+> 从 1.1.5 或更早版本升级到 1.1.6 时，请先移除已有的黑屏组件，安装并运行新版一次，再重新添加 CodexMeter 组件。本次升级修复了部分 Mac 无法注册新版 Widget 扩展的问题。<br>
+> When upgrading from 1.1.5 or earlier to 1.1.6, remove any existing blank widget, install and launch the new version once, then add the CodexMeter widget again. This release fixes Widget extension registration on affected Macs.
+
 > 当前公开构建使用本地签名，尚未经过 Apple Developer ID 公证。首次打开时，macOS 可能要求在 Finder 中右键应用并选择“打开”。<br>
 > The current public build is locally signed and not yet notarized with an Apple Developer ID. On first launch, macOS may require you to right-click the app in Finder and choose Open.
 

@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 struct UsageWindow: Codable, Hashable {
     let usedPercent: Double
@@ -150,11 +151,15 @@ enum UsageServiceError: LocalizedError {
 
 actor UsageService {
     static let shared = UsageService()
-    private let userHome = URL(fileURLWithPath: NSHomeDirectoryForUser(NSUserName()) ?? "/Users/\(NSUserName())", isDirectory: true)
-    private let sandboxHome = FileManager.default.homeDirectoryForCurrentUser
-    private var isWidget: Bool { Bundle.main.bundleIdentifier?.hasSuffix(".widget") == true }
+    private let userHome: URL = {
+        if let record = getpwuid(getuid()) {
+            return URL(fileURLWithPath: String(cString: record.pointee.pw_dir), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+    }()
+    private var isWidget: Bool { Bundle.main.bundleIdentifier?.contains(".widget") == true }
     private var officialUsageCache: (date: Date, activity: [TokenActivityDay], stats: TokenStats, resetCredits: Int64?)?
-    private lazy var cacheURL = (isWidget ? sandboxHome : userHome)
+    private lazy var cacheURL = userHome
         .appendingPathComponent("Library/Caches/com.codexmeter.shared/usage.json")
     private lazy var pendingRollbackURL = userHome
         .appendingPathComponent("Library/Caches/com.codexmeter.shared/pending-rollbacks.json")
@@ -173,8 +178,8 @@ actor UsageService {
     }
 
     func fetch() async -> UsageSnapshot {
-        // The host app owns credentials and networking. The widget reads the
-        // mirrored snapshot from its own sandbox container.
+        // The host app owns credentials and networking. The widget can read
+        // only this sanitized snapshot through its narrow sandbox exception.
         if isWidget {
             return loadCache() ?? UsageSnapshot(primary: nil, secondary: nil, plan: nil,
                                                 updatedAt: Date(), errorMessage: "请打开 CodexMeter 完成首次同步", activity: nil,
@@ -610,12 +615,6 @@ actor UsageService {
         try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: cacheURL, options: .atomic)
-        if !isWidget {
-            let widgetCache = userHome
-                .appendingPathComponent("Library/Containers/com.eko.CodexMeter.widget/Data/Library/Caches/com.codexmeter.shared/usage.json")
-            try? FileManager.default.createDirectory(at: widgetCache.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? data.write(to: widgetCache, options: .atomic)
-        }
     }
 
     private func loadCache() -> UsageSnapshot? {
