@@ -7,10 +7,10 @@ struct UsageEntry: TimelineEntry {
 }
 
 struct UsageProvider: TimelineProvider {
-    func placeholder(in context: Context) -> UsageEntry { UsageEntry(date: Date(), snapshot: .placeholder) }
+    func placeholder(in context: Context) -> UsageEntry { UsageEntry(date: Date(), snapshot: .previewSample) }
     func getSnapshot(in context: Context, completion: @escaping (UsageEntry) -> Void) {
         if context.isPreview { completion(placeholder(in: context)); return }
-        Task { completion(UsageEntry(date: Date(), snapshot: await UsageService.shared.cached() ?? .placeholder)) }
+        Task { completion(UsageEntry(date: Date(), snapshot: await UsageService.shared.cached() ?? .empty)) }
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageEntry>) -> Void) {
         Task {

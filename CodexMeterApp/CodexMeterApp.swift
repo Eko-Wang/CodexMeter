@@ -99,8 +99,9 @@ enum LoginItemManager {
 }
 
 struct DashboardView: View {
-    @State private var snapshot = UsageSnapshot.placeholder
+    @State private var snapshot = UsageSnapshot.empty
     @State private var loading = true
+    @State private var hasLoaded = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -152,22 +153,39 @@ struct DashboardView: View {
                 }
 
                 VStack(spacing: 18) {
-                    TokenActivityChart(days: snapshot.activity ?? [], stats: snapshot.tokenStats, showsDetails: true)
-                    if snapshot.primary != nil || snapshot.secondary != nil {
+                    if let activity = snapshot.activity, !activity.isEmpty {
+                        TokenActivityChart(days: activity, stats: snapshot.tokenStats, showsDetails: true)
+                    } else {
+                        ActivityLoadingView(isLoading: loading && !hasLoaded)
+                    }
+                    if loading && !hasLoaded {
                         Rectangle()
                             .fill(CodexTheme.line(for: colorScheme).opacity(0.22))
                             .frame(height: 1)
-                    }
-                    if let fiveHour = snapshot.primary {
-                        UsageBar(title: "5 小时", window: fiveHour, accent: usageColor(for: fiveHour))
-                    }
-                    if snapshot.primary != nil, snapshot.secondary != nil {
-                        Rectangle()
-                            .fill(CodexTheme.line(for: colorScheme).opacity(0.22))
-                            .frame(height: 1)
-                    }
-                    if let weekly = snapshot.secondary {
-                        UsageBar(title: "每周", window: weekly, accent: weeklyUsageColor(for: weekly))
+                        QuotaLoadingView()
+                    } else {
+                        if snapshot.primary != nil || snapshot.secondary != nil {
+                            Rectangle()
+                                .fill(CodexTheme.line(for: colorScheme).opacity(0.22))
+                                .frame(height: 1)
+                        }
+                        if let fiveHour = snapshot.primary {
+                            UsageBar(title: "5 小时", window: fiveHour, accent: usageColor(for: fiveHour))
+                        }
+                        if snapshot.primary != nil, snapshot.secondary != nil {
+                            Rectangle()
+                                .fill(CodexTheme.line(for: colorScheme).opacity(0.22))
+                                .frame(height: 1)
+                        }
+                        if let weekly = snapshot.secondary {
+                            UsageBar(title: "每周", window: weekly, accent: weeklyUsageColor(for: weekly))
+                        }
+                        if snapshot.primary == nil, snapshot.secondary == nil {
+                            Text(snapshot.errorMessage == nil ? "当前没有可用的额度窗口" : "额度数据暂时不可用")
+                                .font(.system(.caption, design: .rounded, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                        }
                     }
                 }
                 .padding(22)
@@ -202,12 +220,97 @@ struct DashboardView: View {
 
     private var statusText: String {
         if loading { return "正在同步…" }
+        if snapshot.errorMessage != nil {
+            return "缓存于 \(snapshot.updatedAt.formatted(date: .omitted, time: .shortened))"
+        }
         return "更新于 \(snapshot.updatedAt.formatted(date: .omitted, time: .shortened))"
     }
     private func refresh() async {
         loading = true
-        snapshot = await UsageService.shared.fetch()
+        if !hasLoaded, let cached = await UsageService.shared.cached() {
+            snapshot = cached.historyOnly
+        }
+        let refreshed = await UsageService.shared.fetch()
+        snapshot = refreshed
+        hasLoaded = true
         loading = false
         WidgetCenter.shared.reloadTimelines(ofKind: "CodexMeterWidget")
+    }
+}
+
+private struct ActivityLoadingView: View {
+    let isLoading: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Token 活动")
+                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                Spacer()
+                if isLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("暂无活动数据")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            GeometryReader { proxy in
+                let gap: CGFloat = 1.4
+                let cell = max(2, (proxy.size.width - gap * 51) / 52)
+                Canvas { context, _ in
+                    let color = CodexTheme.line(for: colorScheme)
+                        .opacity(colorScheme == .dark ? 0.11 : 0.075)
+                    for column in 0..<52 {
+                        for row in 0..<7 {
+                            let rect = CGRect(x: CGFloat(column) * (cell + gap),
+                                              y: CGFloat(row) * (cell + gap),
+                                              width: cell, height: cell)
+                            context.fill(Path(roundedRect: rect, cornerRadius: min(1.8, cell * 0.28)),
+                                         with: .color(color))
+                        }
+                    }
+                }
+            }
+            .aspectRatio(52.0 / 7.0, contentMode: .fit)
+            HStack(spacing: 0) {
+                ForEach(0..<5, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 0)
+                        .fill(CodexTheme.line(for: colorScheme).opacity(index.isMultiple(of: 2) ? 0.08 : 0.05))
+                }
+            }
+            .frame(height: 54)
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .stroke(CodexTheme.line(for: colorScheme).opacity(0.18), lineWidth: 1))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isLoading ? "正在同步 Token 活动" : "暂无 Token 活动数据")
+    }
+}
+
+private struct QuotaLoadingView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("正在确认额度窗口")
+                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                Spacer()
+                Text("—")
+                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            RoundedRectangle(cornerRadius: 4)
+                .fill(CodexTheme.line(for: colorScheme).opacity(colorScheme == .dark ? 0.20 : 0.10))
+                .frame(height: 11)
+            Text("实时数据返回前不显示缓存额度")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("正在确认当前额度窗口")
     }
 }
