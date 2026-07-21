@@ -87,7 +87,22 @@ struct UsageSnapshot: Codable, Hashable {
     let tokenStats: TokenStats?
     let resetCreditsRemaining: Int64?
 
-    static let placeholder = UsageSnapshot(
+    /// Runtime state before the first authoritative quota response arrives.
+    /// Keep this free of sample values so production UI never presents demo
+    /// data as the user's current allowance.
+    static let empty = UsageSnapshot(
+        primary: nil,
+        secondary: nil,
+        plan: nil,
+        updatedAt: Date(),
+        errorMessage: nil,
+        activity: nil,
+        tokenStats: nil,
+        resetCreditsRemaining: nil
+    )
+
+    /// Sample content is reserved for WidgetKit/Xcode previews.
+    static let previewSample = UsageSnapshot(
         primary: UsageWindow(usedPercent: 38, resetAt: Date().addingTimeInterval(3.5 * 3600), windowSeconds: 18_000),
         secondary: UsageWindow(usedPercent: 13, resetAt: Date().addingTimeInterval(6.9 * 86_400), windowSeconds: 604_800),
         plan: "Codex",
@@ -97,6 +112,15 @@ struct UsageSnapshot: Codable, Hashable {
         tokenStats: TokenStats.placeholder,
         resetCreditsRemaining: 2
     )
+
+    /// Historical token activity is safe to show while a fresh quota request
+    /// is in flight. Realtime allowance and reset-credit fields are withheld.
+    var historyOnly: UsageSnapshot {
+        UsageSnapshot(primary: nil, secondary: nil, plan: plan,
+                      updatedAt: updatedAt, errorMessage: nil,
+                      activity: activity, tokenStats: tokenStats,
+                      resetCreditsRemaining: nil)
+    }
 }
 
 struct TokenStats: Codable, Hashable {
